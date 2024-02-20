@@ -28,7 +28,7 @@ Run the application
 go run .
 ```
 
-## Future considerations
+## Future
 
 * Gin or gorilla/mux
 * Middleware

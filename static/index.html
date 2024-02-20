@@ -146,7 +146,7 @@
       document.querySelector("form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const input = document.querySelector("#description");
-        await createTodo(input.value);
+        await addTodo(input.value);
         input.value = "";
         await getTodos();
       });
@@ -188,7 +188,7 @@
         }
       }
 
-      async function createTodo(description) {
+      async function addTodo(description) {
         await fetch("/todos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
