@@ -37,35 +37,15 @@ func main() {
 	mux.Handle("/", http.FileServer(http.Dir("./static")))
 
 	mux.HandleFunc("/todos", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			todos, err := todos()
-			if err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(todos)
-		} else if r.Method == http.MethodPost {
-			var todo Todo
-			if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			id, err := addTodo(todo)
-			if err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			w.Header().Set("Location", fmt.Sprintf("/todos/%d", id))
-			w.WriteHeader(http.StatusCreated)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+		todos, err := todos()
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(todos)
 	})
 
 	mux.HandleFunc("/todos/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -75,46 +55,76 @@ func main() {
 			return
 		}
 
-		if r.Method == http.MethodGet {
-			todo, err := todoByID(id)
-			if err != nil {
-				if err.Error() == fmt.Sprintf("todoByID %d: no such todo", id) {
-					w.WriteHeader(http.StatusNotFound)
-				} else {
-					log.Println(err)
-					w.WriteHeader(http.StatusInternalServerError)
-				}
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(todo)
-		} else if r.Method == http.MethodPut {
-			var todo Todo
-			if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			todo.ID = id
-			if err := updateTodo(todo); err != nil {
+		todo, err := todoByID(id)
+		if err != nil {
+			if err.Error() == fmt.Sprintf("todoByID %d: no such todo", id) {
+				w.WriteHeader(http.StatusNotFound)
+			} else {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
-				return
 			}
-
-			w.WriteHeader(http.StatusNoContent)
-		} else if r.Method == http.MethodDelete {
-			if err := deleteTodo(id); err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			w.WriteHeader(http.StatusNoContent)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
 		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(todo)
+	})
+
+	mux.HandleFunc("PUT /todos/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		var todo Todo
+		if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		todo.ID = id
+		if err := updateTodo(todo); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	mux.HandleFunc("DELETE /todos/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err := deleteTodo(id); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	mux.HandleFunc("POST /todos", func(w http.ResponseWriter, r *http.Request) {
+		var todo Todo
+		if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		id, err := addTodo(todo)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Location", fmt.Sprintf("/todos/%d", id))
+		w.WriteHeader(http.StatusCreated)
 	})
 
 	if err := http.ListenAndServe(":8080", mux); err != nil {

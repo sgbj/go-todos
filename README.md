@@ -28,6 +28,8 @@ Run the application
 go run .
 ```
 
+Open a browser to http://localhost:8080
+
 ## Future
 
 * Gin or gorilla/mux
